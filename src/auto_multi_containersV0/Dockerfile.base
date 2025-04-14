@@ -1,0 +1,19 @@
+##### DOCKERFILE ######
+# Base Image Definition #
+##########################
+
+# Example of a Docker Python Image
+FROM python:3.9-slim
+
+# Set the working directory
+WORKDIR /app
+
+# Copy requirements.txt to the working directory
+COPY requirements.txt /app/requirements.txt
+
+# Install Python libraries listed in requirements.txt
+RUN pip install --no-cache-dir -r /app/requirements.txt
+
+# Install ip route for information on the network
+RUN apt-get update && apt-get install -y iproute2
+

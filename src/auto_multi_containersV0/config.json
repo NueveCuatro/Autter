@@ -1,0 +1,22 @@
+{
+    "Modules": [
+        {
+            "Name": "c1",
+            "Device": "GPU",
+            "Role" : "default_role",
+            "Send_to": ["c2", "c6"]
+        },
+        {
+            "Name": "c2",
+            "Device": "CPU",
+            "Role" : "trainer",
+            "Send_to": ["default_role"]
+        },
+        {
+            "Name": "c3",
+            "Device": "CPU",
+            "Role" : "default_role",
+            "Send_to": ["c1", "trainer"]
+        }
+    ]
+}
