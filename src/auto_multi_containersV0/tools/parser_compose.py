@@ -8,6 +8,7 @@ import argparse
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--json_file', '-j', required=True, type=str, help='Pass the config.json path')
+parser.add_argument('--network', '-n', required=True, type=str, help='this argument is passed to know the network name')
 args = parser.parse_args()
 
 # Load the JSON
@@ -86,7 +87,7 @@ with open('./modules/docker-compose.yml', 'w') as f:
 
     # ➡️ Network configuration
     f.write("networks:\n")
-    f.write("   consul-net:\n")
+    f.write(f"   {args.network}:\n")
     f.write("     external: true\n")
     # f.write("     driver: bridge\n")
 
