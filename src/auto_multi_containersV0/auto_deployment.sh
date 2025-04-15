@@ -12,8 +12,8 @@ if [[ "$1" == "--build" ]]; then
     cp ./tools/receiveMessageHandler.py ./modules/receiveMessageHandler.py
     cp ./tools/sendMessageHandler.py ./modules/sendMessageHandler.py
     cd modules
-    docker-compose down --remove-orphans
-    docker compose up --build                
+    # docker-compose down --remove-orphans
+    docker compose -p firstset up --remove-orphans --build                 
 
 else
     echo "Deploying without rebuilding images"
