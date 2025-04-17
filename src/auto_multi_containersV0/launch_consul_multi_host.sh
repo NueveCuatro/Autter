@@ -34,65 +34,65 @@
 
 # Check if proper argument(s) are provided.
 if [ -z "$1" ]; then
-    echo "Usage: $0 manager|worker [MANAGER_IP]"
+    echo "[SCRIPT] Usage: $0 manager|worker [MANAGER_IP]"
     exit 1
 fi
 
 ROLE=$1
 
 if [ "$ROLE" == "manager" ]; then
-    echo "Initializing Docker Swarm on manager node..."
-    docker swarm init
+    echo "[SCRIPT] Initializing Docker Swarm on manager node..."
+    docker swarm init --advertise-addr 157.159.160.197 #2001:660:3203:1600:79f9:db51:2ef1:faa2
     # Get the manager's advertise address (it’s used for joining workers)
     MANAGER_ADDR=$(docker info -f '{{.Swarm.NodeAddr}}')
-    echo "Swarm manager initialized at: $MANAGER_ADDR"
+    echo "[SCRIPT] Swarm manager initialized at: $MANAGER_ADDR"
 
-    echo "Creating overlay network 'my_overlay' if it doesn't exist..."
+    echo "[SCRIPT] Creating overlay network 'my_overlay' if it doesn't exist..."
     # Check for the network and create it if necessary.
     if ! docker network ls | grep -q my_overlay ; then
         docker network create --driver overlay --attachable my_overlay
-        echo "Overlay network 'my_overlay' created."
+        echo "[SCRIPT] Overlay network 'my_overlay' created."
     else
-        echo "Overlay network 'my_overlay' already exists."
+        echo "[SCRIPT] Overlay network 'my_overlay' already exists."
     fi
 
-    echo "Deploying Consul stack..."
+    echo "[SCRIPT] Deploying Consul stack..."
     # This assumes you have a file named compose-consul-multi-host.yml in the current directory.
     # The Compose file should set up Consul in server mode (with for instance replica constraints).
-    docker stack deploy -c compose-consul-multi-host.yml consul_stack
-    echo "Consul stack deployed. Workers can join the swarm and they will see the Consul cluster."
+    docker stack deploy -c docker-compose-consul-multi-host.yml consul_stack
+    echo "[SCRIPT] Consul stack deployed. Workers can join the swarm and they will see the Consul cluster."
 
 elif [ "$ROLE" == "worker" ]; then
     # Check that the manager IP is provided
     if [ -z "$2" ]; then
-        echo "Usage for worker: $0 worker MANAGER_IP"
+        echo "[SCRIPT] Usage for worker: $0 worker MANAGER_IP"
         exit 1
     fi
     MANAGER_IP=$2
-    echo "Joining Docker Swarm as worker. Manager IP: $MANAGER_IP"
+    echo "[SCRIPT] Joining Docker Swarm as worker. Manager IP: $MANAGER_IP"
     
     # Check that the join token has been provided in the environment.
     if [ -z "$WORKER_JOIN_TOKEN" ]; then
-        echo "Error: Environment variable WORKER_JOIN_TOKEN is not set."
-        echo "Obtain it on the manager node with: docker swarm join-token worker"
+        echo "[SCRIPT] Error: Environment variable WORKER_JOIN_TOKEN is not set."
+        echo "[SCRIPT] Obtain it on the manager node with: docker swarm join-token worker"
         exit 1
     fi
 
     docker swarm join --token $WORKER_JOIN_TOKEN $MANAGER_IP:2377
-    echo "Successfully joined the swarm as a worker."
+    echo "[SCRIPT] Successfully joined the swarm as a worker."
 
     # On worker nodes, the overlay network 'my_overlay' is created by the manager.
     # Verify that this network exists on this node.
     if docker network ls | grep -q my_overlay ; then
-        echo "Overlay network 'my_overlay' is available."
+        echo "[SCRIPT] Overlay network 'my_overlay' is available."
     else
-        echo "Warning: Overlay network 'my_overlay' not found. Ensure the manager created it."
+        echo "[SCRIPT] Warning: Overlay network 'my_overlay' not found. Ensure the manager created it."
     fi
 
-    echo "Note: The Consul stack is managed by the swarm manager. Workers will participate in it via the overlay network."
+    echo "[SCRIPT] Note: The Consul stack is managed by the swarm manager. Workers will participate in it via the overlay network."
 
 else
-    echo "Usage: $0 manager|worker [MANAGER_IP]"
+    echo "[SCRIPT] Usage: $0 manager|worker [MANAGER_IP]"
     exit 1
 fi
 

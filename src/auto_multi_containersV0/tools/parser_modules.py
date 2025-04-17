@@ -107,7 +107,7 @@ def generate_module_file(module, index):
         # f.write("from otter_net_utils import OtterUtils\n")
         # f.write("tcp_tools = OtterUtils()\n")
         f.write("print(\"Node class imported successfully!\")\n")
-        f.write("CONSUL_URL = \"http://consul:8500\"")
+        f.write("CONSUL_URL = \"http://157.159.160.197:8500\"")
         f.write("\n#####################################\n")
         f.write("# Placeholder for future AI class\n")
         f.write("#####################################\n\n")
@@ -132,111 +132,6 @@ def generate_module_file(module, index):
         f.write("\ttime.sleep(30)\n")
         f.write("\tbreak\n")
 
-        
-        
-        
-
-
-
-        # if incoming or outgoing:
-        #     f.write("    ##################################### SOCKET INITIALIZATION #####################################\n")
-
-        # # 🌟 Initialiser les connexions entrantes (indexées)
-        # if incoming:
-        #     for i, (src_module, conn_type) in enumerate(incoming, start=1):
-        #         # ✅ Si le module est d'indice impair → `HOST = '{module}_container'`
-        #         if index % 2 == 0:
-        #             host = "'0.0.0.0'"
-        #             if conn_type == "TCP":
-        #                 f.write(f"    # TCP Connection to receive from {src_module}\n")
-        #                 f.write(f"    HOST_{i} = {host}\n")  
-        #                 f.write(f"    PORT_{i} = 5000\n")
-        #                 f.write(f"    s_{i} = tcp_tools.init_server_TCP_connection(HOST_{i}, PORT_{i})\n\n")
-        #             elif conn_type == "UDP":
-        #                 f.write(f"    # UDP Connection to receive from {src_module}\n")
-        #                 f.write(f"    HOST_UDP_{i} = {host}\n")  
-        #                 f.write(f"    PORT_UDP_{i} = 5000\n")
-        #                 f.write(f"    buffer_size = 1024\n")
-        #                 f.write(f"    udp_sock_{i}, udp_addr_{i} = tcp_tools.init_server_UDP_connection(HOST_UDP_{i}, PORT_UDP_{i}, buffer_size)\n\n")
-
-        #         else:
-        #             host = f"'{src_module}_container'"
-        #             if conn_type == "TCP":
-        #                 f.write(f"    # TCP Connection to receive from {src_module}\n")
-        #                 f.write(f"    HOST_{i} = {host}\n")  
-        #                 f.write(f"    PORT_{i} = 5001\n")
-        #                 f.write(f"    s_{i} = tcp_tools.init_client_TCP_connection(HOST_{i}, PORT_{i})\n\n")
-        #             elif conn_type == "UDP":
-        #                 f.write(f"    # UDP Connection to receive from {src_module}\n")
-        #                 f.write(f"    HOST_UDP_{i} = {host}\n")  
-        #                 f.write(f"    PORT_UDP_{i} = 5001\n")
-        #                 f.write(f"    buffer_size = 1024\n")
-        #                 f.write(f"    udp_sock_{i}, udp_addr_{i}  = tcp_tools.init_client_connection_UDP(HOST_UDP_{i}, PORT_UDP_{i}, buffer_size)\n\n")
-
-        # # 🌟 Initialiser les connexions sortantes (indexées)
-        # if outgoing:
-        #     for i, (dst_module, conn_type) in enumerate(outgoing, start=1):
-        #         # ✅ Si le module est d'indice impair → `HOST = '{module}_container'`
-        #         if index % 2 == 0:
-        #             host = "'0.0.0.0'"
-        #             if conn_type == "TCP":
-        #                 f.write(f"    # TCP Connection to send to {dst_module}\n")
-        #                 f.write(f"    HOST_OUT_{i} = {host}\n")
-        #                 f.write(f"    PORT_OUT_{i} = 5001\n")
-        #                 f.write(f"    s_out_{i} = tcp_tools.init_server_TCP_connection(HOST_OUT_{i}, PORT_OUT_{i})\n\n")
-                    
-        #             elif conn_type == "UDP":
-        #                 f.write(f"    # UDP Connection to send to {dst_module}\n")
-        #                 f.write(f"    HOST_UDP_OUT_{i} = {host}\n")
-        #                 f.write(f"    PORT_UDP_OUT_{i} = 5001\n")
-        #                 f.write(f"    buffer_size = 1024\n")
-        #                 f.write(f"    udp_sock_out_{i}, udp_out_addr_{i} = tcp_tools.init_server_UDP_connection(HOST_UDP_OUT_{i}, PORT_UDP_OUT_{i},buffer_size )\n\n")
-
-        #         else:
-        #             host = f"'{dst_module}_container'"
-        #             if conn_type == "TCP":
-        #                 f.write(f"    # TCP Connection to send to {dst_module}\n")
-        #                 f.write(f"    HOST_OUT_{i} = {host}\n")
-        #                 f.write(f"    PORT_OUT_{i} = 5000\n")
-        #                 f.write(f"    s_out_{i} = tcp_tools.init_client_TCP_connection(HOST_OUT_{i}, PORT_OUT_{i})\n\n")
-        #             elif conn_type == "UDP":
-        #                 f.write(f"    # UDP Connection to send to {dst_module}\n")
-        #                 f.write(f"    HOST_UDP_OUT_{i} = {host}\n")
-        #                 f.write(f"    PORT_UDP_OUT_{i} = 5000\n")
-        #                 f.write(f"    buffer_size = 1024\n")
-        #                 f.write(f"    udp_sock_out_{i}, udp_out_addr_{i} = tcp_tools.init_client_connection_UDP(HOST_UDP_OUT_{i}, PORT_UDP_OUT_{i}, buffer_size)\n\n")
-
-
-
-        # # ✅ Réception des données (réutilisation des sockets)
-        # if incoming:
-        #     f.write("    ##################################### INCOMING DATA #####################################\n")
-        #     for i, (_, conn_type) in enumerate(incoming, start=1):
-        #         if conn_type == "TCP":
-        #             f.write(f"    buffer_size = 1024\n")
-        #             f.write(f"    data_decode = tcp_tools.wait_for_container_variable_TCP(s_{i}, buffer_size)\n\n")
-        #         elif conn_type == "UDP":
-        #             f.write(f"    buffer_size = 1024\n")
-        #             f.write(f"    data_decode, udp_addr_{i} = tcp_tools.wait_for_container_variable_UDP(udp_sock_{i}, buffer_size)\n\n")
-
-        # # ✅ Simulation du traitement AI
-        # f.write("    ##########################################\n")
-        # f.write("    # Placeholder for future AI prediction \n")
-        # f.write("    prediction = 'prediction'\n")
-        # f.write("    ##########################################\n\n")
-
-
-        # # ✅ Envoi des résultats
-        # if outgoing:
-        #     f.write("    ##################################### OUTGOING DATA #####################################\n")
-        #     for i, (_, conn_type) in enumerate(outgoing, start=1):
-        #         if conn_type == "TCP":
-        #             f.write(f"    tcp_tools.send_variable_to_container_TCP(s_out_{i}, prediction)\n\n")
-        #         elif conn_type == "UDP":
-        #             f.write(f"    tcp_tools.send_variable_to_container_UDP(udp_sock_out_{i}, prediction, udp_out_addr_{i})\n\n")
-
-        # f.write("\n")
-
 
 ####################################################################################################
 
@@ -256,6 +151,7 @@ if __name__ == "__main__":
 
     # ✅ Générer le fichier Python pour chaque module
     for i, module in enumerate(data['Modules']):
+        os.makedirs('./modules', exist_ok=True)
         generate_module_file(module, i)
         generate_utils_folders(module)
         generate_docker_file(module)

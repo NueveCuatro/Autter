@@ -2,7 +2,7 @@
     "Modules": [
         {
             "Name": "c1",
-            "Device": "GPU",
+            "Device": "CPU",
             "Role" : "default_role",
             "Send_to": ["c2", "c6"]
         },

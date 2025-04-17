@@ -2,15 +2,18 @@ version: "3.8"
 
 services:
   consul:
-    image: hashicorp/consul:latest
-    command: agent -server -bootstrap-expect=2 -client=0.0.0.0
+    image: hashicorp/consul:1.15.5
+    command: agent -server -bootstrap-expect=1 -advertise=157.159.160.197 #-ui #-client=0.0.0.0 -bind=0.0.0.0
+    environment:
+      - CONSUL_BIND_INTERFACE=eth0
+      - CONSUL_CLIENT_INTERFACE=eth0
     ports:
       - "8500:8500"
       - "8600:8600/udp"
     networks:
       - my_overlay
     deploy:
-      replicas: 2
+      replicas: 1
 networks:
   my_overlay:
     external: true
