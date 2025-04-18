@@ -35,25 +35,11 @@ class Node:
         #the messages to send to the peer_list. The messages will be passe to a message class to be sent. 
         #The message class will have one instance per message to be sent
         self.sent_peers = set()           # Track IDs of peers that have already received data
+        self.in_progress_peers = set()
 
-        # for addr in self.send_buffer.keys():
-        #     patern = r"\('((\d{1,3}\.){3}\d{1,3})',\s*(\d{1,5})\)"
-        #     assert bool(re.match(patern, addr)), "The keys of the dict send_buffer must be a string and in format '('xxx.xxx.xxx.xxx',XXXX)'"
-
-        # string_addr_list = list(self.send_buffer.keys())
-        # self.peer_list = list(map(ast.literal_eval,string_addr_list)) # list of peers to which the node has to connect (to send). [(host, port), (host, port)...]
-
-
-        # for peer_addr in self.peer_list:
-        #     # patern = r'^(\d{1,3}\.){3}\d{1,3}$'
-        #     # assert isinstance(peer_addr, tuple), f"The peer_list is not in the good format, should be [(host, port), ...], with host : str and port : int  \nGiven : {self.peer_list} "
-        #     assert isinstance(peer_addr[0], str), f"The peer_list is not in the good format, should be [(host, port), ...], with host : str and port : int  \nGiven : {self.peer_list} "
-        #     # assert bool(re.match(patern, peer_addr[0])), "The ip address is not in the good format."
-        #     assert isinstance(peer_addr[1], int)
 
         # self.established_connection_peer = [] # list with the established connections
         self.received_data = {} # received data { 'sender' : {'args' : value ...} }
-        self.peer_connected_socks = []
 
         # We strat the server on a different thread for it to always be able to listen without blocking the app
         self.register_to_consul()
@@ -80,15 +66,44 @@ class Node:
             logging.error(f"Error initializing log file: {e}")
             raise
     
+    # def get_container_ip(self):
+    #     try:
+    #         ip = subprocess.check_output(
+    #             "ip addr show eth0 | awk '/inet / {print $2}'", 
+    #             shell=True
+    #         ).decode().strip().split("/")[0]
+    #         return ip
+    #     except Exception as e:
+    #         logging.error("Could not get container IP: %s", e)
+    #         return "127.0.0.1"
+    
     def get_container_ip(self):
+        """
+        Return the Swarm VIP for this container’s service, so that clients
+        always connect to the service name (and get routed via the overlay mesh).
+        Falls back to eth0 if DNS fails.
+        """
+        # We assume you set an environment var SERVICE_NAME equal to your full
+        # Swarm service name, e.g. "multi_app_stack_c1_service"
+        svc = os.environ.get("SERVICE_NAME")  
+        if svc:
+            try:
+                vip = socket.gethostbyname(svc)
+                logging.info(f"[DISCOVERY] Resolved service VIP {svc} → {vip}")
+                return vip
+            except Exception as e:
+                logging.warning(f"[DISCOVERY] DNS lookup failed for {svc}: {e}")
+
+        # Fallback: real container IP on eth0
         try:
-            ip = subprocess.check_output(
+            out = subprocess.check_output(
                 "ip addr show eth0 | awk '/inet / {print $2}'", 
-                shell=True
+                shell=True, stderr=subprocess.DEVNULL
             ).decode().strip().split("/")[0]
-            return ip
+            logging.info(f"[DISCOVERY] Using eth0 address fallback → {out}")
+            return out
         except Exception as e:
-            logging.error("Could not get container IP: %s", e)
+            logging.error(f"Could not get container IP from eth0: {e}")
             return "127.0.0.1"
     
     def get_container_id(self):
@@ -108,11 +123,17 @@ class Node:
             # Using HOST_IP if provided; otherwise, default to 127.0.0.1
             # "Address": os.environ.get("HOST_IP", "127.0.0.1")
             "Address": self.container_ip,
-            "Check" : {
-                "TTL" : "10s",
-                "DeregisterCriticalServiceAfter" : "30s"
-            }
+            "Check": {
+                 "TCP": f"{self.container_ip}:{self.port}",
+                 "Interval": "5s",
+                 "Timeout": "1s",
+                 "DeregisterCriticalServiceAfter": "30s"
+             }
         }
+            # "Check" : {
+            #     "TTL" : "10s",
+            #     "DeregisterCriticalServiceAfter" : "30s"
+            # }
         # logging.info(f"[DEBUG] Registering container with ID: {self.container_id}")
         # logging.info(f"[DEBUG] Registration payload: {registration}")
         try:
@@ -170,115 +191,58 @@ class Node:
             self.received_data[addr] = {str(variable_name) : msg}
 
 
-    # def connect_to_one_peer(self, peer_host, peer_port):
-    #     """
-    #     Try once to connect to the peer. If the connection fails, return None.
-    #     """
-    #     client_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    #     try:
-    #         client_sock.connect((peer_host, peer_port))
-    #         print(f"[CLIENT] Connected to peer at {peer_host}:{peer_port}")
-    #         logging.info(f"[CLIENT] Connected to peer at {peer_host}:{peer_port}")
-    #         return client_sock
-    #     except Exception as e:
-    #         print(f"[CLIENT] Could not connect to {peer_host}:{peer_port}: {e}")
-    #         logging.error(f"[CLIENT] Could not connect to {peer_host}:{peer_port}: {e}")
-    #         return None
-
-
-    # def _connect_and_send(self, peer):
-    #     """
-    #     For a given peer (a tuple (host, port)), repeatedly try to connect.
-    #     As soon as the connection is established, send the data from send_buffer for that peer.
-    #     """
-    #     # peer_addr = (peer[0], peer[1])
-    #     # key = str(peer_addr)
-    #     # Loop until we get a connection.
-    #     while True:
-    #         try:
-    #             # Retrieve registered services from Consul.
-    #             response = requests.get(f"{self.consul_url}/v1/agent/services")
-    #             services = response.json()
-    #             # logging.info(f'[DEBUG] {self.container_name} container id is {self.container_id}')
-    #             # logging.info(services.items())
-    #             for service_id, service in services.items():
-    #                 # logging.info(f'[DEBUG] the consul container id : {service["ID"]}')
-    #                 if service["ID"] == self.container_id:
-    #                     continue
-    #                 # Check if the service has one of our target roles in its tags.
-    #                 if any(target_role.strip() in service.get("Tags", []) for target_role in self.target_roles)\
-    #                 or any(target_role.strip() == service.get("Name") for target_role in self.target_roles):
-    #                     target_address = service["Address"]
-    #                     target_port = service["Port"]
-    #                     # print(f"{self.container_name} sendto : ", target_address, target_port)
-    #                     logging.info("Attempting to connect to target %s at %s:%s", service["ID"], target_address, target_port)
-    #                     sock = self.connect_to_one_peer(target_address, target_port)
-    #                     if sock:
-    #                         # Once connected, send the data.
-    #                         handler = SendMessageHandler(sock, (target_address, target_port), self.send_buffer)#[key])
-    #                         handler.send_all_messages()
-    #                         # Optionally, if you want to keep the connection open for further communication,
-    #                         # you can store the socket in self.peer_connected_socks.
-    #                         self.peer_connected_socks.append(((target_address, target_port), sock))
-    #                         break  # Exit the loop for this peer.
-    #                     else:
-    #                         # Wait a few seconds before retrying.
-    #                         print(f"[CLIENT] Retrying connection to {(target_address, target_port)} in 3 seconds...")
-    #                         logging.info(f"[CLIENT] Retrying connection to {(target_address, target_port)} in 3 seconds...")
-    #                         time.sleep(3)
-    #         except Exception as e :
-    #             logging.error("Error fetching services from Consul: %s", e)
-
-    #         # sock = self.connect_to_one_peer(peer[0], peer[1])
-
-
-    # def send_data_to_peers(self):
-    #     """
-    #     For each peer in the peer_list, start a thread that will try to connect and send data.
-    #     This allows other peers to get their data sent immediately.
-    #     """
-    #     for peer in self.peer_list:
-    #         # Start a separate thread for each peer.
-    #         t = threading.Thread(target=self._connect_and_send, args=(peer,), daemon=True)
-    #         t.start()
-
     def connect_to_one_peer(self, peer_host, peer_port):
         """
         Try once to connect to the peer. If the connection fails, return None.
         """
         client_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        client_sock.settimeout(5)   # fail fast after 5 seconds
         try:
+            # client_sock.connect((peer_host, peer_port))
+            logging.info(f"[CLIENT] attempting socket.connect() on {peer_host}:{peer_port}")
             client_sock.connect((peer_host, peer_port))
-            logging.info(f"[CLIENT] Connected to peer at {peer_host}:{peer_port}")
+            logging.info(f"[CLIENT] socket.connect() succeeded")
+
+            # logging.info(f"[CLIENT] Connected to peer at {peer_host}:{peer_port}")
             return client_sock
         except Exception as e:
             logging.error(f"[CLIENT] Could not connect to {peer_host}:{peer_port}: {e}")
             return None
+
 
     def _send_to_peer(self, service):
         """
         Handles connecting and sending data to a specific peer identified by a given service.
         Retry on an independent schedule until success, then mark the peer as done.
         """
+        service_id = service["ID"]
         target_address = service["Address"]
         target_port = service["Port"]
-        service_id = service["ID"]
 
-        while True:
-            sock = self.connect_to_one_peer(target_address, target_port)
-            if sock:
-                # Once connected, create the send handler to send the unified send_buffer.
-                handler = SendMessageHandler(sock, (target_address, target_port), self.send_buffer)
-                handler.send_all_messages()
-                # Optionally, keep the connection open:
-                self.peer_connected_socks.append(((target_address, target_port), sock))
-                # Mark this peer as finished so we don't resend in future polls.
-                self.sent_peers.add(service_id)
-                logging.info(f"[CLIENT] Data sent to peer {service_id} at {target_address}:{target_port}")
-                break  # Exit the retry loop for this peer.
-            else:
-                logging.info(f"[CLIENT] Retry connection to {target_address}:{target_port} in 3 seconds...")
-                time.sleep(3)  # Independent delay for this peer before retrying.
+        # logging.info(f"[THREAD {service_id}] → _send_to_peer starting (addr={target_address}:{target_port})")
+        try:
+            while True:
+                # logging.info(f"[THREAD {service_id}] attempting connect to {target_address}:{target_port}")
+                sock = self.connect_to_one_peer(target_address, target_port)
+                # logging.info(f"[THREAD {service_id}] after")
+                if sock:
+                    # Once connected, create the send handler to send the unified send_buffer.
+                    # logging.info(f"[THREAD {service_id}] connected, now sending buffer")
+                    handler = SendMessageHandler(sock, (target_address, target_port), self.send_buffer)
+                    handler.send_all_messages()
+                    # Mark this peer as finished so we don't resend in future polls.
+                    self.sent_peers.add(service_id)
+                    self.in_progress_peers.remove(service_id)
+                    logging.info(f"[CLIENT] Data sent to peer {service_id} at {target_address}:{target_port}")
+                    break  # Exit the retry loop for this peer.
+                else:
+                    # logging.info(f"[CLIENT] Retry connection to {target_address}:{target_port} in 3 seconds...")
+                    logging.info(f"[THREAD {service_id}] connect failed; retrying in 3s")
+                    time.sleep(3)  # Independent delay for this peer before retrying.
+        except Exception as e :
+            logging.exception(f"[THREAD {service_id}] ❌ unexpected error in _send_to_peer")
+
+
 
     def _poll_consul_and_dispatch(self):
         """
@@ -288,6 +252,7 @@ class Node:
         while True:
             try:
                 response = requests.get(f"{self.consul_url}/v1/agent/services")
+                # logging.info(response.text)
                 services = response.json()
                 logging.info(f"[SERVER] polling registery from consul")
 
@@ -296,23 +261,33 @@ class Node:
                     if service["ID"] == self.container_id:
                         continue
 
-                    # Skip peers that already received data.
+                    # # Skip peers that already received data.
                     if service_id in self.sent_peers:
                         continue
 
                     # Check if the service matches our target roles or by exact container name.
                     if any(target_role.strip() in service.get("Tags", []) for target_role in self.target_roles) or \
                        any(target_role.strip() == service.get("Service") for target_role in self.target_roles):
-                        logging.info(f"[DEBUG] Peer candidate found: {service_id} ({service.get('Service')})")
-                        # Spawn a dedicated thread to handle sending to this peer.
-                        t = threading.Thread(target=self._send_to_peer, args=(service,), daemon=True)
-                        t.start()
+                        if service["ID"] not in self.in_progress_peers:
+                            self.in_progress_peers.add(service["ID"])
+                            t = threading.Thread(
+                                target=self._send_to_peer,
+                                args=(service,),
+                                daemon=True,
+                                name=f"send-{service['ID']}"
+                                )
+                            t.start()
+                        # logging.info(f"[DEBUG] Peer candidate found: {service_id} ({service.get('Service')})")
+                        # # Spawn a dedicated thread to handle sending to this peer.
+                        # t = threading.Thread(target=self._send_to_peer, args=(service,), daemon=True)
+                        # t.start()
 
             except Exception as e:
                 logging.error("Error fetching services from Consul: %s", e)
-
+            # break
             # After processing all services, sleep a bit before polling again.
-            time.sleep(3)
+            time.sleep(5)
+
 
     def send_data_to_peers(self):
         """

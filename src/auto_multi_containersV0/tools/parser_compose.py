@@ -163,7 +163,8 @@ def generate_compose(config, network_name, mode):
             "MODULE_NAME": module_name,
             "DEVICE": module.get("Device", ""),
             "ROLE": module.get("Role", ""),
-            "SEND_TO": ",".join(module.get("Send_to", []))
+            "SEND_TO": ",".join(module.get("Send_to", [])),
+            "SERVICE_NAME": f'multi_app_stack_{module_name}_service'
         }
         service_def["environment"] = env_vars
         
@@ -178,6 +179,11 @@ def generate_compose(config, network_name, mode):
         elif mode == "multi":
             # image_name = build_image(module_name)
             service_def["image"] = f"demo_{module_name}:latest"
+            # Do not restart completed tasks
+            service_def["deploy"] = {
+                "restart_policy": {"condition": "none"}
+            }
+
         else:
             print("Invalid mode specified", file=sys.stderr)
             sys.exit(1)
@@ -185,13 +191,13 @@ def generate_compose(config, network_name, mode):
         services[service_name] = service_def
 
     compose_dict = {
+        "version": "3.8",
+        "services": services,
         "networks": {
             network_name: {
                 "external": True
             }
         },
-        "services": services,
-        "version": "3.8",
     }
     return compose_dict
 

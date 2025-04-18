@@ -124,7 +124,8 @@ def generate_module_file(module, index):
         # f.write("    tcp_tools.build_log_file(log_file_path)\n\n")
 
         # ✅ Initialiser toutes les connexions après le log !
-        f.write("send_data = {'var1' : np.random.rand(3,3), 'var2': 'Hello world'}\n")#{\n")
+        f.write(f"name = '{name}'\n")
+        f.write("send_data = {'var1' : np.random.rand(3,3), 'var2': 'Hello world from ' + name}\n")#{\n")
         f.write(f"node = Node(5000, send_data=send_data, log_file_path=log_file_path, container_name=\"{name}\", tags={tags}, consul_url=CONSUL_URL, target_roles={target_roles} )\n")
         f.write("node.send_data_to_peers()\n")
 

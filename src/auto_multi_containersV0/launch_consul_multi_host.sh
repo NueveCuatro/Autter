@@ -61,6 +61,7 @@ if [ "$ROLE" == "manager" ]; then
     # The Compose file should set up Consul in server mode (with for instance replica constraints).
     docker stack deploy -c docker-compose-consul-multi-host.yml consul_stack
     echo "[SCRIPT] Consul stack deployed. Workers can join the swarm and they will see the Consul cluster."
+    echo "[SCRIPT] Reach consol UI at https://157.159.160.197:8500/ui
 
 elif [ "$ROLE" == "worker" ]; then
     # Check that the manager IP is provided

@@ -4,13 +4,13 @@
             "Name": "c1",
             "Device": "CPU",
             "Role" : "default_role",
-            "Send_to": ["c2", "c6"]
+            "Send_to": ["c2", "default_role"]
         },
         {
             "Name": "c2",
             "Device": "CPU",
             "Role" : "trainer",
-            "Send_to": ["default_role"]
+            "Send_to": ["c3", "c1"]
         },
         {
             "Name": "c3",
