@@ -2,6 +2,7 @@ import socket
 import threading
 import requests
 import re
+import sys
 import time
 import numpy as np
 import ast
@@ -47,24 +48,51 @@ class Node:
         threading.Thread(target=self.start_server, daemon=True).start()
         time.sleep(4)
 
+    # def build_log_file(self, log_file_path):
+    #     """
+    #     Initializes the log file and sets up the logging configuration.
+    #     Args:
+    #         log_file_path (str): The path to the log file where logs will be written.
+    #     """
+    #     try:
+    #         with open(log_file_path, 'w') as file:
+    #             pass  
+    #         logging.basicConfig(
+    #             filename=log_file_path,
+    #             handlers=[logging.FileHandler(log_file_path),
+    #                       logging.StreamHandler(sys.stdout)],
+    #             # level=logging.INFO,
+    #             format="%(asctime)s - %(levelname)s - %(message)s",  
+    #         )
+    #         logging.info(f"Logging initialized. Log file is: {log_file_path}")
+    #     except Exception as e:
+    #         logging.error(f"Error initializing log file: {e}")
+    #         raise
     def build_log_file(self, log_file_path):
         """
         Initializes the log file and sets up the logging configuration.
         Args:
-            log_file_path (str): The path to the log file where logs will be written.
+            log_file_path (str): The full path to the log file.
         """
-        try:
-            with open(log_file_path, 'w') as file:
-                pass  
-            logging.basicConfig(
-                filename=log_file_path,
-                level=logging.INFO,
-                format="%(asctime)s - %(levelname)s - %(message)s",  
-            )
-            logging.info(f"Logging initialized. Log file is: {log_file_path}")
-        except Exception as e:
-            logging.error(f"Error initializing log file: {e}")
-            raise
+        # 1) Ensure the parent log directory exists
+        log_dir = os.path.dirname(log_file_path)
+        os.makedirs(log_dir, exist_ok=True)
+
+        # 2) Touch the file so it's there (optional)
+        with open(log_file_path, 'a'):
+            os.utime(log_file_path, None)
+
+        # 3) Configure logging with both a FileHandler and StreamHandler
+        file_handler   = logging.FileHandler(log_file_path)
+        console_handler = logging.StreamHandler(sys.stdout)
+
+        logging.basicConfig(
+            level=logging.INFO,
+            handlers=[file_handler, console_handler],
+            format="%(asctime)s - %(levelname)s - %(message)s",
+        )
+
+        logging.info(f"Logging initialized. Log file is: {log_file_path}")
     
     # def get_container_ip(self):
     #     try:
@@ -140,9 +168,9 @@ class Node:
             logging.info("Registering to Consul: %s", registration)
             response = requests.put(f"{self.consul_url}/v1/agent/service/register", json=registration)
             if response.status_code == 200:
-                logging.info("Registration successful")
+                logging.info(f"[DISCOVERY] Registration successful to {self.consul_url}")
             else:
-                logging.error("Registration failed: %s", response.text)
+                logging.error("[DISCOVERY] Registration failed: %s", response.text)
         except Exception as e:
             logging.error("Exception during registration: %s", e)
 
@@ -151,7 +179,7 @@ class Node:
         server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         server_sock.bind((self.host, self.port))
         server_sock.listen(5)
-        print(f"[SERVER] Listening on {self.host}:{self.port}")
+        # print(f"[SERVER] Listening on {self.host}:{self.port}")
         logging.info(f"[SERVER] Listening on {self.host}:{self.port}")
         while True:
             conn, addr = server_sock.accept()
@@ -160,7 +188,7 @@ class Node:
     
 
     def handle_client(self, conn: socket.socket, addr: str):
-        print(f"[SERVER] Connection from {addr}")
+        # print(f"[SERVER] Connection from {addr}")
         logging.info(f"[SERVER] Connection from {addr}")
         handler = ReceiveMessageHandler(conn, addr)
         try:
@@ -170,7 +198,7 @@ class Node:
                 if messages:
                     for variable_name, msg in messages:
                         self.add_data(addr, variable_name, msg)
-                        print(f"[SERVER] Received message {msg!r} with variable name {variable_name!r} from {addr}")
+                        # print(f"[SERVER] Received message {msg!r} with variable name {variable_name!r} from {addr}")
                         logging.info(f"[SERVER] Received message {msg!r} with variable name {variable_name!r} from {addr}")
                 time.sleep(0.1)
                 # except BlockingIOError:
@@ -181,7 +209,6 @@ class Node:
             logging.error(f"[SERVER] {e} from {addr}")
         finally:
             conn.close()
-            print(f"[SERVER] Connection closed {addr}")
             logging.info(f"[SERVER] Connection closed {addr}")
 
     def add_data(self, addr, variable_name, msg):

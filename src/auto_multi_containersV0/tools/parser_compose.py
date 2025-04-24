@@ -134,22 +134,16 @@ def generate_compose(config, network_name, mode):
     :return: A dictionary representing the docker-compose.yml content.
     """
     services = {}
+    volumes = {}
     modules = config.get("Modules", [])
     for i, module in enumerate(modules):
         module_name = module.get("Name")
         service_name = f"{module_name}_service"
+        module_placement = module.get("Deploy_to", "manager")
         service_def = {}
         
-        # Set the command common to both modes.
-        service_def["command"] = ["/bin/bash", "start.sh"]
         
         # Volumes: Mount the module folder and shared files.
-        service_def["volumes"] = [
-            f"./{module_name}:/app",
-            "./node.py:/app/node.py",
-            "./receiveMessageHandler.py:/app/receiveMessageHandler.py",
-            "./sendMessageHandler.py:/app/sendMessageHandler.py"
-        ]
         
         # Ports: Map container port 5000 to a host port derived from index (e.g., 5001, 5002, etc.).
         host_port = 5000 + (i + 1)
@@ -164,31 +158,47 @@ def generate_compose(config, network_name, mode):
             "DEVICE": module.get("Device", ""),
             "ROLE": module.get("Role", ""),
             "SEND_TO": ",".join(module.get("Send_to", [])),
-            "SERVICE_NAME": f'multi_app_stack_{module_name}_service'
+            "SERVICE_NAME": f'multi_app_stack_{module_name}_service',
+            "CONSUL_URL" : "http://consul:8500"
         }
         service_def["environment"] = env_vars
         
         # For single-host mode, include build and container_name keys.
         if mode == "single":
+            # Set the command common to both modes.
+            service_def["command"] = ["/bin/bash", "start.sh"]
+
+            service_def["volumes"] = [
+                f"./{module_name}:/app",
+                "./node.py:/app/node.py",
+                "./receiveMessageHandler.py:/app/receiveMessageHandler.py",
+                "./sendMessageHandler.py:/app/sendMessageHandler.py"
+            ]
+            
             service_def["build"] = {
                 "context": f"./{module_name}",
                 "dockerfile": f"Dockerfile.{module_name}"
             }
             service_def["container_name"] = module_name
+            
         # For multi-host (stack) mode, build the image first and add an 'image' reference.
         elif mode == "multi":
             # image_name = build_image(module_name)
-            service_def["image"] = f"demo_{module_name}:latest"
+            service_def["image"] = f"157.159.160.197:5000/demo_{module_name}:latest"
             # Do not restart completed tasks
             service_def["deploy"] = {
-                "restart_policy": {"condition": "none"}
+                "restart_policy": {"condition": "none"},
+                "placement": {"constraints": [f"node.role=={module_placement}"]},
             }
+                # "placement": {"constraints": [f"node.hostname=={module_placement}"]},
 
         else:
             print("Invalid mode specified", file=sys.stderr)
             sys.exit(1)
         
         services[service_name] = service_def
+
+        volumes[f"{module_name}_logs"] = {}
 
     compose_dict = {
         "version": "3.8",
@@ -199,6 +209,9 @@ def generate_compose(config, network_name, mode):
             }
         },
     }
+
+    if mode=='multi':
+        compose_dict['volumes'] = volumes
     return compose_dict
 
 def main():

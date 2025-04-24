@@ -42,7 +42,7 @@ ROLE=$1
 
 if [ "$ROLE" == "manager" ]; then
     echo "[SCRIPT] Initializing Docker Swarm on manager node..."
-    docker swarm init --advertise-addr 157.159.160.197 #2001:660:3203:1600:79f9:db51:2ef1:faa2
+    docker swarm init --advertise-addr 157.159.160.197 --data-path-addr 157.159.160.197 #2001:660:3203:1600:79f9:db51:2ef1:faa2
     # Get the manager's advertise address (it’s used for joining workers)
     MANAGER_ADDR=$(docker info -f '{{.Swarm.NodeAddr}}')
     echo "[SCRIPT] Swarm manager initialized at: $MANAGER_ADDR"
@@ -59,9 +59,9 @@ if [ "$ROLE" == "manager" ]; then
     echo "[SCRIPT] Deploying Consul stack..."
     # This assumes you have a file named compose-consul-multi-host.yml in the current directory.
     # The Compose file should set up Consul in server mode (with for instance replica constraints).
-    docker stack deploy -c docker-compose-consul-multi-host.yml consul_stack
+    docker stack deploy -c docker-compose-backend-multi-host.yml backend_stack
     echo "[SCRIPT] Consul stack deployed. Workers can join the swarm and they will see the Consul cluster."
-    echo "[SCRIPT] Reach consol UI at https://157.159.160.197:8500/ui
+    echo "[SCRIPT] Reach consol UI at http://157.159.160.197:8500/ui"
 
 elif [ "$ROLE" == "worker" ]; then
     # Check that the manager IP is provided

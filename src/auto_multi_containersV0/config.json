@@ -4,18 +4,21 @@
             "Name": "c1",
             "Device": "CPU",
             "Role" : "default_role",
+            "Deploy_to" : "manager",
             "Send_to": ["c2", "default_role"]
         },
         {
             "Name": "c2",
             "Device": "CPU",
             "Role" : "trainer",
+            "Deploy_to" : "worker",
             "Send_to": ["c3", "c1"]
         },
         {
             "Name": "c3",
             "Device": "CPU",
             "Role" : "default_role",
+            "Deploy_to" : "manager",
             "Send_to": ["c1", "trainer"]
         }
     ]

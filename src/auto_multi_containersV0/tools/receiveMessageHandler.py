@@ -127,7 +127,8 @@ class ReceiveMessageHandler:
         except RuntimeError as e:
         # When the peer closes the connection, _read() will raise a RuntimeError.
             if str(e) == "Peer closed.":
-                print(f"[SERVER] Connection closed by peer {self.addr}")
+                # print(f"[SERVER] Connection closed by peer {self.addr}")
+                pass
             else:
                 raise
 

@@ -175,6 +175,9 @@ elif [[ "$1" == "--multi" ]]; then
     
     # Build the base image.
     docker build -f Dockerfile.base -t demo_base_image .
+
+    docker tag demo_base_image:latest 157.159.160.197:5000/demo_base_image:latest
+    docker push 157.159.160.197:5000/demo_base_image:latest
     
     # Change directory into modules so that we can build each module's image
     echo "Building images for multi-host deployment..."
@@ -186,9 +189,14 @@ elif [[ "$1" == "--multi" ]]; then
     MODULES=$(jq -r '.Modules[].Name' "../$CONFIG_JSON")
     for module in $MODULES; do
         echo "Building image for module: $module"
+        cp ../tools/node.py ${module}/node.py
+        cp ../tools/receiveMessageHandler.py ${module}/receiveMessageHandler.py
+        cp ../tools/sendMessageHandler.py ${module}/sendMessageHandler.py
         # The Dockerfile is assumed to be at ./<module>/Dockerfile.<module> and the build context is that module's directory.
         if [ -f "./${module}/Dockerfile.${module}" ]; then
             docker build -t demo_${module}:latest -f "./${module}/Dockerfile.${module}" "./${module}" || { echo "Error building image for ${module}"; exit 1; }
+            docker tag demo_${module}:latest   157.159.160.197:5000/demo_${module}:latest
+            docker push 157.159.160.197:5000/demo_${module}:latest
         else
             echo "Error: Dockerfile for module '${module}' not found at ./${module}/Dockerfile.${module}"
             exit 1
@@ -202,9 +210,9 @@ elif [[ "$1" == "--multi" ]]; then
     # and uses image keys instead).
     python ./tools/parser_compose.py -j "$CONFIG_JSON" -n "my_overlay" --mode multi
     # Copy necessary module files.
-    cp ./tools/node.py ./modules/node.py
-    cp ./tools/receiveMessageHandler.py ./modules/receiveMessageHandler.py
-    cp ./tools/sendMessageHandler.py ./modules/sendMessageHandler.py
+    # cp ./tools/node.py ./modules/node.py
+    # cp ./tools/receiveMessageHandler.py ./modules/receiveMessageHandler.py
+    # cp ./tools/sendMessageHandler.py ./modules/sendMessageHandler.py
     cd modules
     # Deploy the application as a Docker stack.
     docker stack deploy -c docker-compose.yml multi_app_stack
