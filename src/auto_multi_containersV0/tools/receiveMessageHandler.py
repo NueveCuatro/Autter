@@ -1,8 +1,79 @@
 import socket
 import pickle
+import logging
 import struct
 import json
 import io
+import time
+
+
+# class ReceiveMessageHandler:
+#     def __init__(self, sock: socket.socket, addr):
+#         self.sock = sock
+#         self.addr = addr
+#         # we'll read in blocking mode here for simplicity
+#         self.sock.setblocking(True)
+#         self._recv_buffer = b""
+#         self._msg_len = None
+
+#     def _read_from_socket(self):
+#         """
+#         Read as much as available (up to 4096 bytes) into our buffer.
+#         Returns False if the peer cleanly closed the connection.
+#         """
+#         try:
+#             data = self.sock.recv(4096)
+#         except socket.error as e:
+#             raise
+#         if not data:
+#             # peer closed
+#             return False
+#         self._recv_buffer += data
+#         return True
+
+#     def recv_all_messages(self):
+#         """
+#         Attempt to read exactly one batch payload, decode it, and return
+#         a list of (variable_name, value) pairs.  If not enough data yet,
+#         returns an empty list.
+#         """
+#         messages = []
+
+#         # 1) Read from socket until we have at least 4 bytes for length
+#         while self._msg_len is None and len(self._recv_buffer) < 4:
+#             if not self._read_from_socket():
+#                 return []  # connection closed before header
+
+#         # 2) Extract the 4-byte length prefix if we haven't yet
+#         if self._msg_len is None and len(self._recv_buffer) >= 4:
+#             self._msg_len = struct.unpack(">I", self._recv_buffer[:4])[0]
+#             self._recv_buffer = self._recv_buffer[4:]
+
+#         # 3) Read until we have the full payload
+#         while len(self._recv_buffer) < self._msg_len:
+#             if not self._read_from_socket():
+#                 return []  # connection closed prematurely
+
+#         # 4) We now have at least _msg_len bytes: extract payload
+#         payload = self._recv_buffer[: self._msg_len]
+#         self._recv_buffer = self._recv_buffer[self._msg_len :]
+#         self._msg_len = None  # reset for next batch
+
+#         # 5) Unpickle the dict and emit (key, value) pairs
+#         try:
+#             data_dict = pickle.loads(payload)
+#         except Exception as e:
+#             logging.error(f"[SERVER] Failed to unpickle batch from {self.addr}: {e}")
+#             return []
+
+#         messages.append(data_dict['container_creds_xxx'])
+#         for var_name, value in data_dict.items():
+#             if var_name=='container_creds_xxx':
+#                 continue
+#             messages.append((var_name, value))
+#             logging.info(f"[SERVER] Received variable '{var_name}' from {self.addr}")
+
+#         return messages
 
 
 class ReceiveMessageHandler:
@@ -67,7 +138,7 @@ class ReceiveMessageHandler:
             for reqhdr in (
                 "byteorder",
                 "content-length",
-                "variable-name-length"
+                "sent-ts"
             ):
                 if reqhdr not in self.jsonheader:
                     raise ValueError(f"Missing required header '{reqhdr}'.")
@@ -95,28 +166,29 @@ class ReceiveMessageHandler:
 
                 # If we have a JSON header, check if the full message is available.
                 if self.jsonheader is not None:
-                    variable_name_len = self.jsonheader["variable-name-length"]
                     content_len = self.jsonheader["content-length"]
-                    total_expected = variable_name_len + content_len
+                    sent_ts = self.jsonheader.get("sent-ts")
+                    total_expected = content_len
                     if len(self._recv_buffer) < total_expected:
                         # Not enough data yet for a complete message.
                         break
+                    
+                    #compute the latency
+                    recv_ts = time.time()
+                    latency = (recv_ts - sent_ts) if sent_ts is not None else None
 
-                    # Process the variable name.
-                    if variable_name_len > 0:
-                        var_name_bytes = self._recv_buffer[:variable_name_len]
-                        variable_name = var_name_bytes.decode("utf-8")
-                    else:
-                        variable_name = f"variable_{i}"
-
-
-                    # Remove variable name bytes.
-                    self._recv_buffer = self._recv_buffer[variable_name_len:]
-                    # Process the message content.
                     content_bytes = self._recv_buffer[:content_len]
                     self._recv_buffer = self._recv_buffer[content_len:]
-                    msg = self._pickle_decode(content_bytes)
-                    messages.append((variable_name, msg))
+                    data_dict = self._pickle_decode(content_bytes)
+
+
+                    messages.append((data_dict['container_creds_xxx'], latency))
+                    for var_name, value in data_dict.items():
+                        if var_name=='container_creds_xxx':
+                            continue
+                        messages.append((var_name, value))
+                    # for variable_name, content in data_dict.items():
+                    #     messages.append((variable_name, content))
 
                     # Reset header info so that we can process the next message.
                     self._jsonheader_len = None

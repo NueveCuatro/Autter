@@ -15,27 +15,29 @@ import subprocess
 class Node:
     def __init__(self,
                  port : int,
-                 send_data : dict = None,
                  log_file_path : str = None,
                  container_name : str = None,
-                 tags : list = None,
+                 role : str = "default_role",
+                 device : str = "CPU",
                  consul_url : str = None,
                  target_roles : list = None,
                  ):
         
         if log_file_path :
-            self.build_log_file(log_file_path)
+            self._build_log_file(log_file_path)
 
         self.target_roles = target_roles
         self.consul_url = consul_url
         self.container_name = container_name
-        self.tags = tags
+        assert isinstance(role, str)
+        self.role = role,
+        assert isinstance(device, str)
+        self.device = device
+        self.tags = [role, device]
+        logging.info(self.tags)
         self.host = '0.0.0.0' # listen on all interfaces
         self.port = port
-        self.send_buffer = send_data # the send buffer is a dict{'args' : value, ...} tha contains all 
-        #the messages to send to the peer_list. The messages will be passe to a message class to be sent. 
-        #The message class will have one instance per message to be sent
-        self.sent_peers = set()           # Track IDs of peers that have already received data
+        self.sent_peers = set()     # Track IDs of peers that have already received data
         self.in_progress_peers = set()
 
 
@@ -43,9 +45,9 @@ class Node:
         self.received_data = {} # received data { 'sender' : {'args' : value ...} }
 
         # We strat the server on a different thread for it to always be able to listen without blocking the app
-        self.register_to_consul()
+        self._register_to_consul()
         # logging.info(f"[DEBUG] This should be viwed only once per container !!!!")
-        threading.Thread(target=self.start_server, daemon=True).start()
+        threading.Thread(target=self._start_server, daemon=True).start()
         time.sleep(4)
 
     # def build_log_file(self, log_file_path):
@@ -68,7 +70,7 @@ class Node:
     #     except Exception as e:
     #         logging.error(f"Error initializing log file: {e}")
     #         raise
-    def build_log_file(self, log_file_path):
+    def _build_log_file(self, log_file_path):
         """
         Initializes the log file and sets up the logging configuration.
         Args:
@@ -105,7 +107,7 @@ class Node:
     #         logging.error("Could not get container IP: %s", e)
     #         return "127.0.0.1"
     
-    def get_container_ip(self):
+    def _get_container_ip(self):
         """
         Return the Swarm VIP for this container’s service, so that clients
         always connect to the service name (and get routed via the overlay mesh).
@@ -134,14 +136,14 @@ class Node:
             logging.error(f"Could not get container IP from eth0: {e}")
             return "127.0.0.1"
     
-    def get_container_id(self):
+    def _get_container_id(self):
         return socket.gethostname()
 
 
-    def register_to_consul(self):
+    def _register_to_consul(self):
         # Build the registration payload
-        self.container_ip = self.get_container_ip()
-        self.container_id = self.get_container_id()
+        self.container_ip = self._get_container_ip()
+        self.container_id = self._get_container_id()
         # logging.info(f'[DEBUG] container id on registration{self.container_id}')
         registration = {
             "Name": self.container_name,
@@ -155,7 +157,7 @@ class Node:
                  "TCP": f"{self.container_ip}:{self.port}",
                  "Interval": "5s",
                  "Timeout": "1s",
-                 "DeregisterCriticalServiceAfter": "30s"
+                 "DeregisterCriticalServiceAfter": "10s"
              }
         }
             # "Check" : {
@@ -174,7 +176,7 @@ class Node:
         except Exception as e:
             logging.error("Exception during registration: %s", e)
 
-    def start_server(self):
+    def _start_server(self):
         # self.register_to_consul()
         server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         server_sock.bind((self.host, self.port))
@@ -184,10 +186,10 @@ class Node:
         while True:
             conn, addr = server_sock.accept()
             # each established connection is lunched on a different thread
-            threading.Thread(target=self.handle_client, args=(conn, addr), daemon=True).start()
+            threading.Thread(target=self._handle_client, args=(conn, addr), daemon=True).start()
     
 
-    def handle_client(self, conn: socket.socket, addr: str):
+    def _handle_client(self, conn: socket.socket, addr: str):
         # print(f"[SERVER] Connection from {addr}")
         logging.info(f"[SERVER] Connection from {addr}")
         handler = ReceiveMessageHandler(conn, addr)
@@ -196,10 +198,14 @@ class Node:
                 # try:
                 messages = handler.recv_all_messages()
                 if messages:
+                    creds, latency = messages.pop(0)
                     for variable_name, msg in messages:
-                        self.add_data(addr, variable_name, msg)
+                        if variable_name=='container_creds_xxx':
+                            continue
+                        self._add_data(creds, variable_name, msg)
                         # print(f"[SERVER] Received message {msg!r} with variable name {variable_name!r} from {addr}")
-                        logging.info(f"[SERVER] Received message {msg!r} with variable name {variable_name!r} from {addr}")
+                        # logging.info(f"[SERVER] Received message {msg!r} with variable name {variable_name!r} from {addr}")
+                    logging.info(f"[LATENCY] from {creds} is : {latency} on port {addr[1]}")
                 time.sleep(0.1)
                 # except BlockingIOError:
                 #     # No data ready yet.
@@ -211,19 +217,19 @@ class Node:
             conn.close()
             logging.info(f"[SERVER] Connection closed {addr}")
 
-    def add_data(self, addr, variable_name, msg):
-        if addr in list(self.received_data.keys()) :
-            self.received_data[addr][str(variable_name)] = msg
+    def _add_data(self, creds, variable_name, msg):
+        if creds in list(self.received_data.keys()) :
+            self.received_data[creds][str(variable_name)] = msg
         else:
-            self.received_data[addr] = {str(variable_name) : msg}
+            self.received_data[creds] = {str(variable_name) : msg}
 
 
-    def connect_to_one_peer(self, peer_host, peer_port):
+    def _connect_to_one_peer(self, peer_host, peer_port):
         """
         Try once to connect to the peer. If the connection fails, return None.
         """
         client_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        client_sock.settimeout(5)   # fail fast after 5 seconds
+        client_sock.settimeout(10)   # fail fast after 5 seconds
         try:
             # client_sock.connect((peer_host, peer_port))
             logging.info(f"[CLIENT] attempting socket.connect() on {peer_host}:{peer_port}")
@@ -250,7 +256,7 @@ class Node:
         try:
             while True:
                 # logging.info(f"[THREAD {service_id}] attempting connect to {target_address}:{target_port}")
-                sock = self.connect_to_one_peer(target_address, target_port)
+                sock = self._connect_to_one_peer(target_address, target_port)
                 # logging.info(f"[THREAD {service_id}] after")
                 if sock:
                     # Once connected, create the send handler to send the unified send_buffer.
@@ -316,10 +322,14 @@ class Node:
             time.sleep(5)
 
 
-    def send_data_to_peers(self):
+    def send_data_to_peers(self, send_data):
         """
         Start the polling thread that checks Consul for new peers to send data.
         """
+        self.send_buffer = send_data # the send buffer is a dict{'args' : value, ...} tha contains all 
+        #the messages to send to the peer_list. The messages will be passe to a message class to be sent. 
+        #The message class will have one instance per message to be sent
+        self.send_buffer['container_creds_xxx'] = (self.container_name, self.role)
         poll_thread = threading.Thread(target=self._poll_consul_and_dispatch, daemon=True)
         poll_thread.start()
 

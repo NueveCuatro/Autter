@@ -93,7 +93,6 @@ def generate_module_file(module, index):
     name = module['Name']
     role = module.get("Role", "default_role")
     device = module.get("Device", "cpu")
-    tags = [role, device]
     target_roles = module.get("Send_to", [])
     # send_to_list = module['Send_to']
     # incoming, outgoing = get_module_connections(name)
@@ -112,8 +111,8 @@ def generate_module_file(module, index):
         # f.write("from otter_net_utils import OtterUtils\n")
         # f.write("tcp_tools = OtterUtils()\n")
         f.write("print(\"Node class imported successfully!\")\n")
-        # f.write("CONSUL_URL = \"http://157.159.160.197:8500\"")
-        f.write(f"CONSUL_URL = \"http://consul:8500\"")
+        f.write("CONSUL_URL = \"http://157.159.160.197:8500\"")
+        # f.write(f"CONSUL_URL = \"http://consul:8500\"")
         f.write("\n#####################################\n")
         f.write("# Placeholder for future AI class\n")
         f.write("#####################################\n\n")
@@ -131,13 +130,21 @@ def generate_module_file(module, index):
 
         # ✅ Initialiser toutes les connexions après le log !
         f.write(f"name = '{name}'\n")
-        # f.write("send_data = {'var1' : np.random.rand(3,3), 'var2': 'Hello world from ' + name}\n")#{\n")
-        f.write("send_data = {'var1' : 'Hello world from ' + name}\n")#{\n")
-        f.write(f"node = Node(5000, send_data=send_data, log_file_path=log_file_path, container_name=\"{name}\", tags={tags}, consul_url=CONSUL_URL, target_roles={target_roles} )\n")
-        f.write("node.send_data_to_peers()\n")
+        # f.write("send_data = {'var1' : name}\n")#{\n")
+        f.write("send_data = {'var1' : np.random.rand(1024).astype(np.float64)}\n")#{\n")
+        # f.write("send_data = {'var1' : 'Hello world from ' + name, 'var2' : np.random.rand(2,2)}\n")#{\n")
+        # f.write("for i in range(3,100):\n")
+        # f.write("\tsend_data[str(i)] = f'data {i}'\n")
+        f.write(f"node = Node(5000, log_file_path=log_file_path, container_name=\"{name}\", role=\"{role}\", device=\"{device}\", consul_url=CONSUL_URL, target_roles={target_roles} )\n")
+        # f.write("node.send_data_to_peers(send_data=send_data)\n")
+        f.write("for i in range(1000):\n")
+        f.write("\tnode.send_data_to_peers(send_data=send_data)\n")
+        f.write(f"\tnode.sent_peers = set()\n")
+        f.write("\ttime.sleep(0.01)\n")
 
         f.write("while True:\n")
         f.write("\ttime.sleep(30)\n")
+        # f.write("\tlogging.info(node.received_data)\n")
         f.write("\tbreak\n")
 
 
