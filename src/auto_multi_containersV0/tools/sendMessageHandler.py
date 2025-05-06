@@ -117,7 +117,7 @@ class SendMessageHandler:
                 if variable_name=='container_creds_xxx':
                     continue
                 msg = f"[CLIENT] Sent message for variable '{variable_name}' to {self.peer_addr}"
-                print(msg)
+                # print(msg)
                 logging.info(msg)
         except Exception as e:
             err = f"[CLIENT] Error sending batch payload to {self.peer_addr}: {e}"

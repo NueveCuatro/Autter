@@ -182,7 +182,7 @@ elif [[ "$1" == "--multi" ]]; then
     # Change directory into modules so that we can build each module's image
     echo "Building images for multi-host deployment..."
     python ./tools/parser_modules.py -j "$CONFIG_JSON"
-    
+    python ./tools/parser_app_file.py -j "$CONFIG_JSON" --modules ./modules --addfiles ./add_files
     cd modules || { echo "Failed to change directory to modules"; exit 1; }
     
     # Extract module names from the config.json. We assume jq is available.

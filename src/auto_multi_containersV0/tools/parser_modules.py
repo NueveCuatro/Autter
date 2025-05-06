@@ -71,7 +71,7 @@ def generate_start_file(module):
         f.write("  /link\\/ether/ {print \"MAC Address:\", $2}\n")
         f.write("'\n\n")
         f.write("# Run the Python script\n")
-        f.write(f"python {name}.py\n")
+        f.write(f"python app_{name}.py\n")
 
 ####################################################################################################
 # Functions to generate module_n.py file depending the topology of the network load through JSON config file
@@ -89,63 +89,63 @@ def get_module_connections(module_name):
 
 
 # Fonction pour générer le fichier d'un module
-def generate_module_file(module, index):
-    name = module['Name']
-    role = module.get("Role", "default_role")
-    device = module.get("Device", "cpu")
-    target_roles = module.get("Send_to", [])
-    # send_to_list = module['Send_to']
-    # incoming, outgoing = get_module_connections(name)
-    module_file_path = f"./modules/{name}/{name}.py"
+# def generate_module_file(module, index):
+#     name = module['Name']
+#     role = module.get("Role", "default_role")
+#     device = module.get("Device", "cpu")
+#     target_roles = module.get("Send_to", [])
+#     # send_to_list = module['Send_to']
+#     # incoming, outgoing = get_module_connections(name)
+#     module_file_path = f"./modules/{name}/{name}.py"
     
-    with open(module_file_path, 'w') as f:
-        # ➡️ En-tête du fichier
-        f.write(f"#####################################\n")
-        f.write(f"# Module {index + 1} - {name}.py\n")
-        f.write(f"# Handles incoming and outgoing connections\n")
-        f.write(f"#####################################\n")
-        f.write("import time\n")
-        f.write("import logging\n")
-        f.write("import numpy as np\n")
-        f.write("from node import Node\n")
-        # f.write("from otter_net_utils import OtterUtils\n")
-        # f.write("tcp_tools = OtterUtils()\n")
-        f.write("print(\"Node class imported successfully!\")\n")
-        f.write("CONSUL_URL = \"http://157.159.160.197:8500\"")
-        # f.write(f"CONSUL_URL = \"http://consul:8500\"")
-        f.write("\n#####################################\n")
-        f.write("# Placeholder for future AI class\n")
-        f.write("#####################################\n\n")
+#     with open(module_file_path, 'w') as f:
+#         # ➡️ En-tête du fichier
+#         f.write(f"#####################################\n")
+#         f.write(f"# Module {index + 1} - {name}.py\n")
+#         f.write(f"# Handles incoming and outgoing connections\n")
+#         f.write(f"#####################################\n")
+#         f.write("import time\n")
+#         f.write("import logging\n")
+#         f.write("import numpy as np\n")
+#         f.write("from node import Node\n")
+#         # f.write("from otter_net_utils import OtterUtils\n")
+#         # f.write("tcp_tools = OtterUtils()\n")
+#         f.write("print(\"Node class imported successfully!\")\n")
+#         f.write("CONSUL_URL = \"http://157.159.160.197:8500\"")
+#         # f.write(f"CONSUL_URL = \"http://consul:8500\"")
+#         f.write("\n#####################################\n")
+#         f.write("# Placeholder for future AI class\n")
+#         f.write("#####################################\n\n")
 
-        f.write("if __name__ == \"__main__\":\n")
+#         f.write("if __name__ == \"__main__\":\n")
 
-        # ✅ Si le module agit en tant que client → sleep pour éviter les conflits initiaux
-        # if index % 2 == 1:
-        #     f.write(f"    time.sleep(2+{index})  # Wait during initialization for client connections\n")
+#         # ✅ Si le module agit en tant que client → sleep pour éviter les conflits initiaux
+#         # if index % 2 == 1:
+#         #     f.write(f"    time.sleep(2+{index})  # Wait during initialization for client connections\n")
 
-        # ✅ Initialiser le fichier log
-        f.write("    # Log Initialization\n")
-        f.write("    log_file_path = \"/app/logs/container.log\"\n")
-        # f.write("    tcp_tools.build_log_file(log_file_path)\n\n")
+#         # ✅ Initialiser le fichier log
+#         f.write("    # Log Initialization\n")
+#         f.write("    log_file_path = \"/app/logs/container.log\"\n")
+#         # f.write("    tcp_tools.build_log_file(log_file_path)\n\n")
 
-        # ✅ Initialiser toutes les connexions après le log !
-        f.write(f"name = '{name}'\n")
-        # f.write("send_data = {'var1' : name}\n")#{\n")
-        f.write("send_data = {'var1' : np.random.rand(1024).astype(np.float64)}\n")#{\n")
-        # f.write("send_data = {'var1' : 'Hello world from ' + name, 'var2' : np.random.rand(2,2)}\n")#{\n")
-        # f.write("for i in range(3,100):\n")
-        # f.write("\tsend_data[str(i)] = f'data {i}'\n")
-        f.write(f"node = Node(5000, log_file_path=log_file_path, container_name=\"{name}\", role=\"{role}\", device=\"{device}\", consul_url=CONSUL_URL, target_roles={target_roles} )\n")
-        # f.write("node.send_data_to_peers(send_data=send_data)\n")
-        f.write("for i in range(1000):\n")
-        f.write("\tnode.send_data_to_peers(send_data=send_data)\n")
-        f.write(f"\tnode.sent_peers = set()\n")
-        f.write("\ttime.sleep(0.01)\n")
+#         # ✅ Initialiser toutes les connexions après le log !
+#         f.write(f"name = '{name}'\n")
+#         # f.write("send_data = {'var1' : name}\n")#{\n")
+#         f.write("send_data = {'var1' : np.random.rand(1024).astype(np.float64)}\n")#{\n")
+#         # f.write("send_data = {'var1' : 'Hello world from ' + name, 'var2' : np.random.rand(2,2)}\n")#{\n")
+#         # f.write("for i in range(3,100):\n")
+#         # f.write("\tsend_data[str(i)] = f'data {i}'\n")
+#         f.write(f"node = Node(5000, log_file_path=log_file_path, container_name=\"{name}\", role=\"{role}\", device=\"{device}\", consul_url=CONSUL_URL, target_roles={target_roles} )\n")
+#         # f.write("node.send_data_to_peers(send_data=send_data)\n")
+#         f.write("for i in range(1000):\n")
+#         f.write("\tnode.send_data_to_peers(send_data=send_data)\n")
+#         f.write(f"\tnode.sent_peers = set()\n")
+#         f.write("\ttime.sleep(0.01)\n")
 
-        f.write("while True:\n")
-        f.write("\ttime.sleep(30)\n")
-        # f.write("\tlogging.info(node.received_data)\n")
-        f.write("\tbreak\n")
+#         f.write("while True:\n")
+#         f.write("\ttime.sleep(30)\n")
+#         # f.write("\tlogging.info(node.received_data)\n")
+#         f.write("\tbreak\n")
 
 
 ####################################################################################################
@@ -167,7 +167,7 @@ if __name__ == "__main__":
     # ✅ Générer le fichier Python pour chaque module
     for i, module in enumerate(data['Modules']):
         os.makedirs('./modules', exist_ok=True)
-        generate_module_file(module, i)
+        # generate_module_file(module, i)
         generate_utils_folders(module)
         generate_docker_file(module)
         generate_start_file(module)

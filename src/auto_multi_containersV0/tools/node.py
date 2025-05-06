@@ -204,7 +204,7 @@ class Node:
                             continue
                         self._add_data(creds, variable_name, msg)
                         # print(f"[SERVER] Received message {msg!r} with variable name {variable_name!r} from {addr}")
-                        # logging.info(f"[SERVER] Received message {msg!r} with variable name {variable_name!r} from {addr}")
+                        logging.info(f"[SERVER] Received message {msg!r} with variable name {variable_name!r} from {addr}")
                     logging.info(f"[LATENCY] from {creds} is : {latency} on port {addr[1]}")
                 time.sleep(0.1)
                 # except BlockingIOError:
