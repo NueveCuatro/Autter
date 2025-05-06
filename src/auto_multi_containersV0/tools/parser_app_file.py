@@ -48,61 +48,6 @@ if __name__ == "__main__":
     time.sleep(30)
 """
 
-# def generate_app_file(module, modules_dir, add_files_dir):
-#     name = module["Name"]
-#     role = module.get("Role", "default_role")
-#     device = module.get("Device", "CPU")
-#     targets = module.get("Send_to", [])
-
-#     out_path = os.path.join(modules_dir, name, "app_" + f"{name}.py")
-#     os.makedirs(os.path.dirname(out_path), exist_ok=True)
-
-#     # Do we have custom logic?
-#     custom_py = os.path.join(add_files_dir, f"{name}.py")
-#     if os.path.exists(custom_py):
-#         # os.system(f'cp {custom_py} {out_path}')
-#         shutil.copy(custom_py, os.path.join(modules_dir, name))
-#         custom_import = f"from {name} import Content"
-#         content_init = "    content = Content()"
-#         # If Content.requires_data, wait for any data in node.received_data
-#         run_block = indent(
-#             """\
-# if content.requires_data:
-#     # block until we’ve received at least one peer payload
-#     while not node.received_data:
-#         time.sleep(0.1)
-#     send_data = {'var1' : content.run(node.received_data)}
-# else:
-#     send_data = {'var1' : content.run()}
-# """, "    ")
-#     else:
-#         custom_import = "# (no custom add_files — using default random sender)"
-#         content_init = ""
-#         run_block = indent(
-#             """\
-# # default: send a single random 1KB-ish NumPy array under 'var1'
-# send_data = {'var1': np.random.rand(256).astype(np.float64)}
-# """, "    ")
-
-#     # Fill in the template
-#     app_py = APP_TEMPLATE.format(
-#         custom_import=custom_import,
-#         content_init=content_init,
-#         module=name,
-#         role=role,
-#         device=device,
-#         targets=targets,
-#         run_block=run_block,
-#         CONSUL_URL=CONSUL_URL
-#     )
-
-#     with open(out_path, "w") as f:
-#         f.write(app_py)
-
-import os
-import shutil
-from textwrap import indent
-
 def generate_app_file(module, modules_dir, add_files_dir):
     name    = module["Name"]
     role    = module.get("Role", "default_role")
