@@ -138,6 +138,9 @@ def generate_compose(config, network_name, mode):
     modules = config.get("Modules", [])
     for i, module in enumerate(modules):
         module_name = module.get("Name")
+        module_device = module.get("Device", "cpu").lower()
+        device_gpu_bool = module_device == "gpu"
+        print("device gpu bool", device_gpu_bool)
         service_name = f"{module_name}_service"
         module_placement = module.get("Deploy_to", "manager")
         service_def = {}
@@ -155,12 +158,15 @@ def generate_compose(config, network_name, mode):
         # Set environment variables (based on config values).
         env_vars = {
             "MODULE_NAME": module_name,
-            "DEVICE": module.get("Device", ""),
+            "DEVICE": module.get("Device", "").upper(),
             "ROLE": module.get("Role", ""),
             "SEND_TO": ",".join(module.get("Send_to", [])),
             "SERVICE_NAME": f'multi_app_stack_{module_name}_service',
             "CONSUL_URL" : "http://consul:8500"
         }
+        if device_gpu_bool:
+            env_vars["NVIDIA_VISIBLE_DEVICES"]="all"
+            env_vars["NVIDIA_DRIVER_CAPABILITIES"]="compute,utility"
         service_def["environment"] = env_vars
         
         # For single-host mode, include build and container_name keys.
@@ -187,9 +193,23 @@ def generate_compose(config, network_name, mode):
             service_def["image"] = f"157.159.160.197:5000/demo_{module_name}:latest"
             # Do not restart completed tasks
             service_def["deploy"] = {
-                "restart_policy": {"condition": "none"},
+                "restart_policy": {"condition" : "none"},
                 "placement": {"constraints": [f"node.role=={module_placement}"]},
             }
+            if device_gpu_bool:
+                # service_def["deploy"]["resources"] = {
+                #     "reservations" :
+                #     {
+                #         "devices" : [
+                #             {
+                #             "driver" : "nvidia",
+                #             "count" : 1,
+                #             "capabilities" : ["gpu"],
+                #             }
+                #         ]
+                #     }
+                # }
+                service_def["deploy"]["placement"]["constraints"].append("node.labels.gpu==true")
                 # "placement": {"constraints": [f"node.hostname=={module_placement}"]},
 
         else:
@@ -238,7 +258,7 @@ def main():
     try:
         # open('./modules/docker-compose.yml', 'w').close()
         with open(output_file, "w") as f:
-            yaml.dump(compose_config, f, default_flow_style=False)
+            yaml.dump(compose_config, f, sort_keys=False, default_flow_style=False)
         print("✅ docker-compose.yml file generated successfully!")
     except Exception as e:
         print(f"Error writing {output_file}: {e}", file=sys.stderr)

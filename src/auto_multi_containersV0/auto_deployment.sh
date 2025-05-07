@@ -31,8 +31,8 @@ elif [[ "$1" == "--multi" ]]; then
     
     # Change directory into modules so that we can build each module's image
     echo "Building images for multi-host deployment..."
-    python ./tools/parser_modules.py -j "$CONFIG_JSON"
-    python ./tools/parser_app_file.py -j "$CONFIG_JSON" --modules ./modules --addfiles ./add_files
+    python3 ./tools/parser_modules.py -j "$CONFIG_JSON"
+    python3 ./tools/parser_app_file.py -j "$CONFIG_JSON" --modules ./modules --addfiles ./add_files
     cd modules || { echo "Failed to change directory to modules"; exit 1; }
     
     # Extract module names from the config.json. We assume jq is available.
@@ -58,14 +58,14 @@ elif [[ "$1" == "--multi" ]]; then
     
     # Generate the Compose file in multi-host mode (this version omits build and container_name,
     # and uses image keys instead).
-    python ./tools/parser_compose.py -j "$CONFIG_JSON" -n "my_overlay" --mode multi
+    python3 ./tools/parser_compose.py -j "$CONFIG_JSON" -n "my_overlay" --mode multi
     # Copy necessary module files.
     # cp ./tools/node.py ./modules/node.py
     # cp ./tools/receiveMessageHandler.py ./modules/receiveMessageHandler.py
     # cp ./tools/sendMessageHandler.py ./modules/sendMessageHandler.py
     cd modules
     # Deploy the application as a Docker stack.
-    # docker stack deploy -c docker-compose.yml multi_app_stack
+    docker stack deploy -c docker-compose.yml multi_app_stack
 
 else
     echo "Deploying without rebuilding images (Single Host Mode)"

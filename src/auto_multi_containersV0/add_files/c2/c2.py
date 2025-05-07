@@ -1,4 +1,4 @@
-from utils.utils_c2 import foo
+from .utils.utils_c2 import foo
 
 class Content():
     def __init__(self):

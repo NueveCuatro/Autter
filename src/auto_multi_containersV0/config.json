@@ -2,21 +2,21 @@
     "Modules": [
         {
             "Name": "c1",
-            "Device": "CPU",
+            "Device": "cpu",
             "Role" : "default_role",
             "Deploy_to" : "manager",
             "Send_to": ["c2", "default_role"]
         },
         {
             "Name": "c2",
-            "Device": "CPU",
+            "Device": "cpu",
             "Role" : "trainer",
-            "Deploy_to" : "worker",
+            "Deploy_to" : "manager",
             "Send_to": ["c3", "c1"]
         },
         {
             "Name": "c3",
-            "Device": "CPU",
+            "Device": "cpu",
             "Role" : "default_role",
             "Deploy_to" : "manager",
             "Send_to": ["c1", "trainer"]
