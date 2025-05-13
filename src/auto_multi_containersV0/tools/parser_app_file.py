@@ -15,6 +15,8 @@ import time
 import logging
 import numpy as np
 from node import Node
+from queue import Queue
+from itertools import count as _count
 
 # If there’s a custom Content in add_files/<module>.py, we’ll import it below
 {custom_import}
@@ -24,10 +26,40 @@ if __name__ == "__main__":
     log_file_path = "/app/logs/container.log"
     CONSUL_URL='{CONSUL_URL}'
 
+    # --- A counter for naming output variables ---
+    _var_counter = _count(1)
+    
     # --- Instantiate your custom logic (if any) ---
 {content_init}
+    in_q = Queue()
+
+    def handle_msg(creds, var_name, msg, node_obj):
+        # push into our local queue
+        in_q.put((creds, var_name, msg))
+        # if content wants data, wait until at least one batch is in
+        if content.requires_data:
+            while in_q.empty():
+                time.sleep(0.1)
+            _, _, latest = None, None, None
+            while not in_q.empty():
+                _, _, latest = in_q.get()
+            out = content.run(latest)
+        else:
+            out = content.run()
+
+        # send the result right away
+        idx = next(_var_counter)
+        send_payload = {{"var_handle_msg{{}}".format(idx): out}}
+        node_obj.send_data_to_peers(send_payload)
+        # reset sent_peers so we can re-send if needed:
+        # node_obj.sent_peers.clear()
 
     # --- Build the Node, give it your role, device, etc. ---
+    if content.requires_data :
+        receive_logic = {receive_logic}
+    else :
+        receive_logic=None
+
     node = Node(
         5000,
         log_file_path=log_file_path,
@@ -35,18 +67,23 @@ if __name__ == "__main__":
         role="{role}",
         device="{device}",
         consul_url=CONSUL_URL,
-        target_roles={targets}
+        target_roles={targets},
+        on_receive=receive_logic,
     )
 
     # --- Decide if we wait for incoming data before running ---
 {run_block}
 
-    # --- Send whatever came back from run() as your send_data dict ---
-    node.send_data_to_peers(send_data=send_data)
-
-    # --- Optional: keep alive if you want to inspect logs, etc. ---
-    time.sleep(30)
+    while True:
+        time.sleep(1)
 """
+
+#     # --- Send whatever came back from run() as your send_data dict ---
+#     node.send_data_to_peers(send_data=send_data)
+
+#     # --- Optional: keep alive if you want to inspect logs, etc. ---
+#     time.sleep(30)
+# """
 
 def generate_app_file(module, modules_dir, add_files_dir):
     name    = module["Name"]
@@ -70,14 +107,23 @@ def generate_app_file(module, modules_dir, add_files_dir):
         shutil.copy(single_py, add_dest)
         custom_import = f"from add_files.{name} import Content"
         content_init  = "    content = Content()"
+        receive_logic = "handle_msg"
+        #TODO look at the receive logic be carefule with the if isfile and elif isdir()
+#         run_block = indent(
+#             """\
+# if content.requires_data:
+#     while not node.received_data:
+#         time.sleep(0.1)
+#     send_data = {'var1': content.run(node.received_data)}
+# else:
+#     send_data = {'var1': content.run()}
+# """, "    "
+#         )
         run_block = indent(
             """\
-if content.requires_data:
-    while not node.received_data:
-        time.sleep(0.1)
-    send_data = {'var1': content.run(node.received_data)}
-else:
-    send_data = {'var1': content.run()}
+if not content.requires_data:
+        initial = content.run()
+        node.send_data_to_peers({"var1": initial})
 """, "    "
         )
 
@@ -87,20 +133,29 @@ else:
         shutil.copytree(folder_src, add_dest)
         custom_import = f"from add_files.{name} import Content"
         content_init  = "    content = Content()"
+        receive_logic = "handle_msg"
+        # run_block = indent(
+#             """\
+# if content.requires_data:
+#     while not node.received_data:
+#         time.sleep(0.1)
+#     send_data = {'var1': content.run(node.received_data)}
+# else:
+#     send_data = {'var1': content.run()}
+# """, "    "
+        # )
         run_block = indent(
             """\
-if content.requires_data:
-    while not node.received_data:
-        time.sleep(0.1)
-    send_data = {'var1': content.run(node.received_data)}
-else:
-    send_data = {'var1': content.run()}
+if not content.requires_data:
+        initial = content.run()
+        node.send_data_to_peers({"var1": initial})
 """, "    "
         )
 
     else:
         custom_import = "# (no custom add_files — using default random sender)"
         content_init  = ""
+        receive_logic = "None"
         run_block = indent(
             """\
 # default: send a single random 1KB-ish NumPy array under 'var1'
@@ -139,10 +194,22 @@ send_data = {'var1': np.random.rand(256).astype(np.float64)}
         device=device,
         targets=targets,
         run_block=run_block,
-        CONSUL_URL=CONSUL_URL
+        CONSUL_URL=CONSUL_URL,
+        receive_logic=receive_logic
     )
-    with open(out_path, "w") as f:
-        f.write(app_py)
+
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+    print(f"[parser_app_file] → Writing generated app to: {out_path}")
+
+    try:
+        with open(out_path, "w") as f:
+            f.write(app_py)
+        print(f"[parser_app_file] ✓ Successfully wrote {out_path}")
+    except Exception as e:
+        print(f"[parser_app_file] ✗ ERROR writing {out_path}: {e}")
+
+    # with open(out_path, "w") as f:
+    #     f.write(app_py)
 
 
 def main():

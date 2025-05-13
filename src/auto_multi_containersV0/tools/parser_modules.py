@@ -23,9 +23,7 @@ def generate_utils_folders(module):
     ''
     name = module['Name']
     module_logs_path = f"./modules/{name}/logs"
-    module_inputs_path = f"./modules/{name}/inputs"
     os.makedirs(module_logs_path, exist_ok=True)
-    os.makedirs(module_inputs_path, exist_ok=True)
 
 # - (3) 
 def generate_docker_file(module):
