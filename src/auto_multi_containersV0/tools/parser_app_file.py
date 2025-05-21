@@ -59,6 +59,7 @@ if __name__ == "__main__":
         receive_logic = {receive_logic}
     else :
         receive_logic=None
+    # receive_logic=None
 
     node = Node(
         5000,
@@ -159,7 +160,10 @@ if not content.requires_data:
         run_block = indent(
             """\
 # default: send a single random 1KB-ish NumPy array under 'var1'
-send_data = {'var1': np.random.rand(256).astype(np.float64)}
+for i in range(10):
+    send_data = {f'var{i}': 'np.random.rand(64,64).astype(float)'}
+    node.send_data_to_peers(send_data)
+    time.sleep(0.1)
 """, "    "
         )
 

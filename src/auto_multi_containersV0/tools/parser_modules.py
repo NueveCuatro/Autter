@@ -69,7 +69,9 @@ def generate_start_file(module):
         f.write("  /link\\/ether/ {print \"MAC Address:\", $2}\n")
         f.write("'\n\n")
         f.write("# Run the Python script\n")
+        f.write("echo before\n")
         f.write(f"python app_{name}.py\n")
+        f.write("echo after\n")
 
 ####################################################################################################
 # Functions to generate module_n.py file depending the topology of the network load through JSON config file

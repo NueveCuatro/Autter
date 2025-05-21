@@ -29,7 +29,7 @@ class Node:
         self.consul_url = consul_url
         self.container_name = container_name
         assert isinstance(role, str)
-        self.role = role,
+        self.role = role
         assert isinstance(device, str)
         self.device = device
         self.tags = [role, device]
@@ -49,7 +49,7 @@ class Node:
         self._register_to_consul()
         # logging.info(f"[DEBUG] This should be viwed only once per container !!!!")
         threading.Thread(target=self._start_server, daemon=True).start()
-        time.sleep(4)
+        time.sleep(1)
 
         # --- Pending payload tasks ---
         # Each task is {'payload': dict, 'sent_peers': set(), 'created_at': float}
@@ -156,8 +156,17 @@ class Node:
 
     def _start_server(self):
         # self.register_to_consul()
+        # server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        # server_sock.bind((self.host, self.port))
+        # server_sock.listen(5)
         server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        server_sock.bind((self.host, self.port))
+        server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        try:
+            server_sock.bind((self.host, self.port))
+        except OSError as e:
+            logging.error(f"bind failed: {e}; maybe already running")
+            return
         server_sock.listen(5)
         # print(f"[SERVER] Listening on {self.host}:{self.port}")
         logging.info(f"[SERVER] Listening on {self.host}:{self.port}")
@@ -293,7 +302,7 @@ class Node:
                 raise RuntimeError(f"connect failed to {ip}:{port}")
             handler = SendMessageHandler(sock, (ip, port), task['payload'])
             handler.send_all_messages()
-            logging.info(f"[CLIENT] sent keys {list(task['payload'].keys())} to {ip}:{port}")
+            # logging.info(f"[CLIENT] sent keys {list(task['payload'].keys()).remove('container_creds_xxx')} to {ip}:{port}")
             task['sent_peers'].add(svc_id)
         except Exception:
             logging.exception(f"[CLIENT] error sending to {ip}:{port}")

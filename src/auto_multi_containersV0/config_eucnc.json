@@ -1,0 +1,39 @@
+{
+    "Modules": [
+        {
+            "Name": "c1",
+            "Device": "cpu",
+            "Role" : "user",
+            "Deploy_to" : "manager",
+            "Send_to": ["gen_ai"]
+        },
+        {
+            "Name": "c2",
+            "Device": "gpu",
+            "Role" : "gen_ai",
+            "Deploy_to" : "manager",
+            "Send_to": ["hidden"]
+        },
+        {
+            "Name": "c3",
+            "Device": "gpu",
+            "Role" : "gen_ai",
+            "Deploy_to" : "manager",
+            "Send_to": ["hidden"]
+        },
+        {
+            "Name": "c4",
+            "Device": "gpu",
+            "Role" : "hidden",
+            "Deploy_to" : "manager",
+            "Send_to": ["c5"]
+        },
+        {
+            "Name": "c5",
+            "Device": "cpu",
+            "Role" : "default_role",
+            "Deploy_to" : "manager",
+            "Send_to": ["user"]
+        }
+    ]
+}
